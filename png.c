@@ -9,7 +9,7 @@
 #define PNG_SIG_CAP 8
 const uint8_t exp_sig[PNG_SIG_CAP] = {137, 80, 78, 71, 13, 10, 26, 10};
 
-void read_buffer_or_panic(FILE *file, uint8_t *buf, size_t buf_cap) {
+void read_bytes_or_panic(FILE *file, void *buf, size_t buf_cap) {
     size_t n = fread(buf, buf_cap, 1, file);
     if (n != 1) {
         if (ferror(file)) {
@@ -27,6 +27,15 @@ void print_bytes(uint8_t *buf, size_t buf_cap) {
         printf("%u ", buf[i]);
     }
     printf("\n");
+}
+
+void reverse_bytes(void *buf0, size_t buf_cap) {
+    uint8_t* buf = buf0;
+    for (size_t i = 0; i < buf_cap / 2; ++i) {
+        uint8_t t = buf[i];
+        buf[i] = buf[buf_cap - i - 1];
+        buf[buf_cap - i - 1] = t;
+    }
 }
 int main(int argc, char **argv) {
     (void)argc;
@@ -49,7 +58,7 @@ int main(int argc, char **argv) {
     //first 8 bytes in a png is a signature.
     //will always be 137 80 78 71 13 10 26 10
     uint8_t sig[PNG_SIG_CAP];
-    read_buffer_or_panic(input_file, sig, PNG_SIG_CAP);
+    read_bytes_or_panic(input_file, sig, PNG_SIG_CAP);
     if (memcmp(sig, exp_sig, PNG_SIG_CAP) != 0) {
         fprintf(stderr, "ERROR: Possible file corruption\n");
         exit(1);
@@ -57,6 +66,12 @@ int main(int argc, char **argv) {
 
     print_bytes(sig, PNG_SIG_CAP);
 
+    //32 bit int for chunk size
+    //the bytes are reversed
+    uint32_t chunk_sz;
+    read_bytes_or_panic(input_file, &chunk_sz, sizeof(chunk_sz));
+    reverse_bytes(&chunk_sz, sizeof(chunk_sz));
+    printf("chunk size: %u\n", chunk_sz);
     fclose(input_file);
     return 0;
 }
