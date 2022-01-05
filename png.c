@@ -124,6 +124,7 @@ void inject_custom_chunk(FILE *file,
     write_bytes_or_panic(file, &chunk_crc, sizeof(chunk_crc));
 }
 int main(int argc, char **argv) {
+    make_crc_table();
     (void)argc;
     assert(*argv != NULL);
     char *program = *argv++;
@@ -133,6 +134,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
     char *input_file_path = *argv++;
+    //turn this into a warning
     if (*argv == NULL) {
         fprintf(stderr, "Usage: %s <input.png> <output.png>\n", program);
         fprintf(stderr, "ERROR: No output file provided.\n");
@@ -207,10 +209,13 @@ int main(int argc, char **argv) {
         read_bytes_or_panic(input_file, &chunk_crc, sizeof(chunk_crc));
         write_bytes_or_panic(output_file, &chunk_crc, sizeof(chunk_crc));
 
+        //inject chunk after the IHDR chunk
         if (*(uint32_t *)chunk_type == 0x52444849) {
             uint32_t injected_sz = 5;
-            uint32_t injected_crc = 0;
+            uint32_t injected_crc = crc("BALLS", injected_sz);
+            reverse_bytes(&injected_sz, sizeof(injected_sz));
             write_bytes_or_panic(output_file, &injected_sz, sizeof(injected_sz));
+            reverse_bytes(&injected_sz, sizeof(injected_sz)); //reverse again
             char *injected_type = "coCK";
             write_bytes_or_panic(output_file, injected_type, 4);
             write_bytes_or_panic(output_file, "BALLS", injected_sz);
